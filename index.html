@@ -48,20 +48,39 @@ canvas { border:1px solid #ccc; margin-top:10px; }
 </div>
 
 <script>
-let grade, questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, timerInterval, time=65*60;
+// ---------------- VARIABLES ----------------
+let grade, questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, timerInterval, time=65*60, userAnswers=[];
 
-// Sample question bank templates by grade (simplified mock NAPLAN style)
-const questionBank = {
-3:[{q:"I have 3 apples and 2 oranges. How many fruits in total?", a:5, s:"3+2=5", t:"Number"}],
-5:[{q:"A rectangle has length 8cm and width 5cm. Find area.", a:40, s:"Area=8*5=40", t:"Geometry"}],
-7:[{q:"A table shows students' scores. Average of 5,6,7,8,9?", a:7, s:"(5+6+7+8+9)/5=35/5=7", t:"Data Interpretation"}],
-9:[{q:"Solve 2x+5=15", a:5, s:"2x+5=15 → 2x=10 → x=5", t:"Algebra"}],
-10:[{q:"y=3x, x=4. Find y.", a:12, s:"y=3*4=12", t:"Functions"}],
-11:[{q:"Find sin(30°).", a:0.5, s:"sin(30°)=0.5", t:"Trigonometry"}],
-12:[{q:"Item $7, quantity 3. Total cost?", a:21, s:"7*3=21", t:"Word Problem"}]
-};
+// ---------------- RANDOM HELPER ----------------
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 
-// Select grade
+// ---------------- QUESTION BANKS (~100 each grade) ----------------
+// For brevity, we will generate mock questions using templates for demo
+// Production: fill ~100 real NAPLAN-like questions per grade
+const questionBank = {};
+[3,5,7,9,10,11,12].forEach(g=>{
+    questionBank[g]=[];
+    for(let i=1;i<=100;i++){
+        let topic=["Algebra","Number","Geometry","Data Interpretation","Functions","Trigonometry","Probability","Word Problem"][rand(0,7)];
+        let val=rand(1,20);
+        let qText="";
+        let a=0;
+        let s="";
+        switch(topic){
+            case "Number": qText=`What is ${val} + ${rand(1,20)}?`; a=val+rand(1,20); s=`Add numbers step by step`; break;
+            case "Algebra": qText=`Solve x + ${val} = ${val+rand(1,10)}`; a=rand(1,10); s=`Subtract ${val} from both sides`; break;
+            case "Geometry": qText=`A rectangle with length ${val} and width ${rand(1,10)}. Find area.`; a=val*rand(1,10); s=`Area = length*width`; break;
+            case "Data Interpretation": qText=`Table shows scores: ${val},${val+1},${val+2}. Find average.`; a=(val+val+1+val+2)/3; s=`Average = sum/3`; break;
+            case "Functions": qText=`If f(x)=${val}x, find f(${rand(1,10)})`; a=val*rand(1,10); s=`Multiply f by input`; break;
+            case "Trigonometry": qText=`Find sin(${rand(0,90)}°)`; a=rand(0,1); s=`Use sin formula`; break;
+            case "Probability": qText=`Probability of head in coin toss?`; a=0.5; s=`1/2`; break;
+            case "Word Problem": qText=`John buys ${val} pencils at $${rand(1,5)} each. Total cost?`; a=val*rand(1,5); s=`Multiply quantity by price`; break;
+        }
+        questionBank[g].push({q:qText,a:a,s:s,t:topic});
+    }
+});
+
+// ---------------- SELECT GRADE ----------------
 function setGrade(g){
     grade=g;
     document.querySelectorAll('.grade-btn').forEach(b=>b.classList.remove('selected'));
@@ -70,19 +89,18 @@ function setGrade(g){
     startTimer(time);
 }
 
-// Random helper
-function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-
-// Generate test 40 questions
+// ---------------- GENERATE TEST ----------------
 function generateTest(){
-    questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1;
+    questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, userAnswers=[];
+    let bank=questionBank[grade];
+    let usedIndexes=new Set();
     for(let i=0;i<40;i++){
-        let bank=questionBank[grade];
-        let obj=bank[rand(0,bank.length-1)];
-        questions.push(obj.q);
-        answers.push(obj.a);
-        solutions.push(obj.s);
-        topicsUsed.push(obj.t);
+        let idx;
+        do{ idx=rand(0,bank.length-1); }while(usedIndexes.has(idx));
+        usedIndexes.add(idx);
+        let obj=bank[idx];
+        let q=obj.q, a=obj.a, s=obj.s, t=obj.t;
+        questions.push(q); answers.push(a); solutions.push(s); topicsUsed.push(t);
     }
     renderQuestion();
     document.getElementById("submitBtn").style.display="none";
@@ -91,45 +109,46 @@ function generateTest(){
     document.getElementById("solution").style.display="none";
 }
 
-// Render current question
+// ---------------- RENDER QUESTION ----------------
 function renderQuestion(){
     let i=currentQ;
-    let qHTML = `<div class="question">Q${i+1}: ${questions[i]}</div><input type="text" id="ansInput">`;
-    // Simple canvas example for diagrams
+    let qHTML=`<div class="question">Q${i+1}: ${questions[i]}</div><input type="text" id="ansInput">`;
     if(topicsUsed[i]==="Geometry"){
-        qHTML += `<canvas id="canvas${i}" width="200" height="100"></canvas>`;
+        qHTML+=`<canvas id="canvas${i}" width="200" height="100"></canvas>`;
         setTimeout(()=>drawCanvas(i),50);
     }
     document.getElementById("quiz").innerHTML=qHTML+`<button onclick="checkAnswer()">Submit Answer</button>`;
     updateProgress();
 }
 
-// Draw sample geometry diagram
+// ---------------- DRAW CANVAS ----------------
 function drawCanvas(i){
-    let c=document.getElementById("canvas"+i);
-    if(!c) return;
+    let c=document.getElementById("canvas"+i); if(!c) return;
     let ctx=c.getContext("2d");
     ctx.clearRect(0,0,c.width,c.height);
     ctx.fillStyle="#4CAF50"; ctx.fillRect(20,20,160,60);
     ctx.strokeStyle="#000"; ctx.strokeRect(20,20,160,60);
 }
 
-// Check answer
+// ---------------- CHECK ANSWER ----------------
 function checkAnswer(){
     let user=document.getElementById("ansInput").value;
-    let correct = Math.abs(user - answers[currentQ])<0.01 || user.toLowerCase()==answers[currentQ].toString().toLowerCase();
+    userAnswers.push(user);
+    let correct = Math.abs(user - answers[currentQ])<0.01 || user.toString().toLowerCase()==answers[currentQ].toString().toLowerCase();
     if(correct) difficulty=Math.min(3,difficulty+0.5); else difficulty=Math.max(1,difficulty-0.5);
     currentQ++;
-    if(currentQ<questions.length) renderQuestion(); else finishTest();
+    if(currentQ<questions.length) renderQuestion();
+    else finishTest();
 }
 
-// Finish test
+// ---------------- FINISH TEST ----------------
 function finishTest(){
     clearInterval(timerInterval);
+    document.getElementById("time").innerText="Finished";
     let score=0, topicErrors={};
     for(let i=0;i<questions.length;i++){
-        if(Math.abs(answers[i]-answers[i])<0.01) score++;
-        else topicErrors[topicsUsed[i]]=(topicErrors[topicsUsed[i]]||0)+1;
+        if(Math.abs(userAnswers[i]-answers[i])<0.01 || userAnswers[i].toString().toLowerCase()==answers[i].toString().toLowerCase()) score++;
+        else { topicErrors[topicsUsed[i]]=(topicErrors[topicsUsed[i]]||0)+1; }
     }
     let reportText=`Score: ${score}/${questions.length}\n`;
     if(Object.keys(topicErrors).length>0){
@@ -143,7 +162,7 @@ function finishTest(){
     document.getElementById("report").innerText=reportText;
 }
 
-// Show all solutions
+// ---------------- SHOW ALL SOLUTIONS ----------------
 function showAllSolutions(){
     let sol="";
     solutions.forEach((s,i)=>sol+=`Q${i+1}: ${s}\n\n`);
@@ -151,21 +170,20 @@ function showAllSolutions(){
     document.getElementById("solution").innerText=sol;
 }
 
-// Timer
+// ---------------- TIMER ----------------
 function startTimer(sec){
-    clearInterval(timerInterval);
-    time=sec;
+    clearInterval(timerInterval); time=sec;
     timerInterval=setInterval(()=>{
         let m=Math.floor(time/60), s=time%60;
         document.getElementById("time").innerText=`${m}:${s<10?'0':''}${s}`;
-        if(time>0) time--; else clearInterval(timerInterval);
+        if(time>0) time--; else { clearInterval(timerInterval); finishTest(); }
     },1000);
 }
 
-// Progress
+// ---------------- PROGRESS ----------------
 function updateProgress(){
     let p = Math.round((currentQ/questions.length)*100);
-    let prog = document.getElementById("progress");
+    let prog=document.getElementById("progress");
     prog.style.width=p+'%';
     prog.innerText=p+'%';
 }
