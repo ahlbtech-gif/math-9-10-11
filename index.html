@@ -2,34 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>NAPLAN-style Math Test</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAPLAN-Style Math Test App</title>
 <style>
-body { font-family: Arial; background:#eef2f7; margin:0; padding:0; }
+body { margin:0; font-family: Arial, sans-serif; background:#eef2f7; }
+header { background:#4CAF50; color:white; text-align:center; padding:15px; font-size:1.3em; font-weight:bold; }
 .container { max-width:900px; margin:auto; padding:20px; }
-h2 { text-align:center; }
-button { padding:10px 15px; margin:5px; border:none; border-radius:8px; background:#4CAF50; color:white; font-weight:bold; cursor:pointer; }
-input { padding:8px; width:60px; margin-top:5px; }
-.question { margin:15px 0; }
-#solution, #report { white-space: pre-line; background:#f1f1f1; padding:10px; margin-top:10px; display:none; }
-.timer { font-size:20px; color:red; text-align:center; }
+button { padding:10px 15px; margin:5px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; }
+.grade-btn { background:#2196F3; color:white; }
+.grade-btn.selected { background:#ff9800; }
+#quiz { margin-top:20px; }
+.question { margin:15px 0; font-size:1.1em; }
+input[type="text"] { padding:8px; width:80px; margin-top:5px; }
+.timer { font-size:20px; color:red; text-align:center; margin-top:10px; }
+.progress-bar { width:100%; background:#ddd; border-radius:10px; height:20px; margin:15px 0; }
+.progress { height:100%; width:0%; background:#4CAF50; border-radius:10px; text-align:center; color:white; line-height:20px; }
+#solution, #report { background:#f1f1f1; padding:10px; margin-top:10px; white-space: pre-line; display:none; }
+canvas { border:1px solid #ccc; margin-top:10px; }
 </style>
 </head>
 <body>
 
+<header>Ba mẹ yêu con Linh-Brian</header>
+
 <div class="container">
-<h2>📚 NAPLAN-style Math Test</h2>
-
+<h2>NAPLAN-Style Math Test</h2>
 <p>Select Grade:</p>
-<button onclick="setGrade(9)" id="g9">9</button>
-<button onclick="setGrade(10)" id="g10">10</button>
-<button onclick="setGrade(11)" id="g11">11</button>
-<button onclick="setGrade(12)" id="g12">12</button>
+<button class="grade-btn" onclick="setGrade(3)" id="g3">3</button>
+<button class="grade-btn" onclick="setGrade(5)" id="g5">5</button>
+<button class="grade-btn" onclick="setGrade(7)" id="g7">7</button>
+<button class="grade-btn" onclick="setGrade(9)" id="g9">9</button>
+<button class="grade-btn" onclick="setGrade(10)" id="g10">10</button>
+<button class="grade-btn" onclick="setGrade(11)" id="g11">11</button>
+<button class="grade-btn" onclick="setGrade(12)" id="g12">12</button>
 
-<hr>
 <div class="timer">Time: <span id="time">65:00</span></div>
-<div id="quiz"></div>
+<div class="progress-bar"><div class="progress" id="progress">0%</div></div>
 
+<div id="quiz"></div>
 <button onclick="submitTest()" id="submitBtn" style="display:none;">Submit Test</button>
 <button onclick="showAllSolutions()" id="showSolBtn" style="display:none;">Show All Solutions</button>
 
@@ -38,59 +48,70 @@ input { padding:8px; width:60px; margin-top:5px; }
 </div>
 
 <script>
-let grade;
-let questions=[], answers=[], solutions=[], topicsUsed=[];
-let currentQ=0, difficulty=1;
-let timerInterval, time=65*60; // 65 min
+let grade, questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, timerInterval, time=65*60;
 
-// Grade selection
+// Sample question bank templates by grade (simplified mock NAPLAN style)
+const questionBank = {
+3:[{q:"I have 3 apples and 2 oranges. How many fruits in total?", a:5, s:"3+2=5", t:"Number"}],
+5:[{q:"A rectangle has length 8cm and width 5cm. Find area.", a:40, s:"Area=8*5=40", t:"Geometry"}],
+7:[{q:"A table shows students' scores. Average of 5,6,7,8,9?", a:7, s:"(5+6+7+8+9)/5=35/5=7", t:"Data Interpretation"}],
+9:[{q:"Solve 2x+5=15", a:5, s:"2x+5=15 → 2x=10 → x=5", t:"Algebra"}],
+10:[{q:"y=3x, x=4. Find y.", a:12, s:"y=3*4=12", t:"Functions"}],
+11:[{q:"Find sin(30°).", a:0.5, s:"sin(30°)=0.5", t:"Trigonometry"}],
+12:[{q:"Item $7, quantity 3. Total cost?", a:21, s:"7*3=21", t:"Word Problem"}]
+};
+
+// Select grade
 function setGrade(g){
     grade=g;
-    document.querySelectorAll('button[id^="g"]').forEach(b=>b.style.background='#4CAF50');
-    document.getElementById('g'+g).style.background='#ff9800';
+    document.querySelectorAll('.grade-btn').forEach(b=>b.classList.remove('selected'));
+    document.getElementById('g'+g).classList.add('selected');
     generateTest();
     startTimer(time);
 }
 
-// Utility
+// Random helper
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 
-// Adaptive question generator
-function generateQuestion(){
-    let topics=['algebra','functions','trig','simplify','integrals','word'];
-    let t = topics[rand(0,topics.length-1)];
-    let q="", a=0, s="";
-    let max = difficulty*10;
-    let type = Math.random()<0.5?'MC':'SA';
-
-    if(t==="algebra"){ let x=rand(1,max), b=rand(1,max); q=`Solve: x + ${b} = ${x+b}`; a=x; s=`x + ${b} = ${x+b}\n=> x = ${a}` }
-    if(t==="functions"){ let k=rand(1,max), xval=rand(1,max); q=`y=${k}x, x=${xval}. Find y`; a=k*xval; s=`y=${k}*${xval}=${a}` }
-    if(t==="trig"){ let angles=[30,45,60][rand(0,2)]; let val=angles==30?0.5:angles==45?0.707:0.866; q=`Find sin(${angles}°)`; a=val; s=`sin(${angles}) ≈ ${val}` }
-    if(t==="simplify"){ let x=rand(1,5), y=rand(1,5); q=`Simplify: ${x}x + ${y}x`; a=x+y; s=`${x}x + ${y}x = ${a}x` }
-    if(t==="integrals"){ let c=rand(1,5); q=`∫ ${c} dx`; a=c+"x + C"; s=`∫ ${c} dx = ${a}` }
-    if(t==="word"){ let p=rand(2,10), q2=rand(2,5); q=`Item $${p}, quantity ${q2}. Total cost?`; a=p*q2; s=`${p} * ${q2} = ${a}` }
-
-    return {q,a,s,t,type};
-}
-
-// Generate full test (40 questions)
+// Generate test 40 questions
 function generateTest(){
     questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1;
     for(let i=0;i<40;i++){
-        let obj=generateQuestion();
+        let bank=questionBank[grade];
+        let obj=bank[rand(0,bank.length-1)];
         questions.push(obj.q);
         answers.push(obj.a);
         solutions.push(obj.s);
         topicsUsed.push(obj.t);
     }
     renderQuestion();
+    document.getElementById("submitBtn").style.display="none";
+    document.getElementById("showSolBtn").style.display="none";
+    document.getElementById("report").style.display="none";
+    document.getElementById("solution").style.display="none";
 }
 
 // Render current question
 function renderQuestion(){
     let i=currentQ;
-    document.getElementById("quiz").innerHTML=`<div class="question">Q${i+1}: ${questions[i]}<br><input id="ansInput"></div>
-    <button onclick="checkAnswer()">Submit Answer</button>`;
+    let qHTML = `<div class="question">Q${i+1}: ${questions[i]}</div><input type="text" id="ansInput">`;
+    // Simple canvas example for diagrams
+    if(topicsUsed[i]==="Geometry"){
+        qHTML += `<canvas id="canvas${i}" width="200" height="100"></canvas>`;
+        setTimeout(()=>drawCanvas(i),50);
+    }
+    document.getElementById("quiz").innerHTML=qHTML+`<button onclick="checkAnswer()">Submit Answer</button>`;
+    updateProgress();
+}
+
+// Draw sample geometry diagram
+function drawCanvas(i){
+    let c=document.getElementById("canvas"+i);
+    if(!c) return;
+    let ctx=c.getContext("2d");
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.fillStyle="#4CAF50"; ctx.fillRect(20,20,160,60);
+    ctx.strokeStyle="#000"; ctx.strokeRect(20,20,160,60);
 }
 
 // Check answer
@@ -139,6 +160,14 @@ function startTimer(sec){
         document.getElementById("time").innerText=`${m}:${s<10?'0':''}${s}`;
         if(time>0) time--; else clearInterval(timerInterval);
     },1000);
+}
+
+// Progress
+function updateProgress(){
+    let p = Math.round((currentQ/questions.length)*100);
+    let prog = document.getElementById("progress");
+    prog.style.width=p+'%';
+    prog.innerText=p+'%';
 }
 </script>
 </body>
