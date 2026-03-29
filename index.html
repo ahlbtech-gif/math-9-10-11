@@ -1,211 +1,225 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAPLAN-Style Math Test PRO Full</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AHLB Math App PRO</title>
+
+<!-- PWA -->
+<link rel="manifest" href="data:application/json,{
+'name':'AHLB Math App',
+'short_name':'AHLB',
+'start_url':'.',
+'display':'standalone',
+'background_color':'#ffffff',
+'theme_color':'#4CAF50'
+}">
+
 <style>
-body { margin:0; font-family: Arial, sans-serif; background:#eef2f7; }
-header { background:#4CAF50; color:white; text-align:center; padding:15px; font-size:1.3em; font-weight:bold; }
-.container { max-width:900px; margin:auto; padding:20px; }
-button { padding:10px 15px; margin:5px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; }
-.grade-btn { background:#2196F3; color:white; }
-.grade-btn.selected { background:#ff9800; }
-#quiz { margin-top:20px; }
-.question { margin:15px 0; font-size:1.1em; }
-input[type="text"] { padding:8px; width:80px; margin-top:5px; }
-.timer { font-size:20px; color:red; text-align:center; margin-top:10px; }
-.progress-bar { width:100%; background:#ddd; border-radius:10px; height:20px; margin:15px 0; }
-.progress { height:100%; width:0%; background:#4CAF50; border-radius:10px; text-align:center; color:white; line-height:20px; }
-#solution, #report { background:#f1f1f1; padding:10px; margin-top:10px; white-space: pre-line; display:none; }
-canvas { border:1px solid #ccc; margin-top:10px; }
-.finish-btn { background:#f44336; color:white; }
-.submit-btn { background:#4CAF50; color:white; }
-.show-sol-btn { background:#ff9800; color:white; }
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+header{background:#4CAF50;color:#fff;text-align:center;padding:15px;font-weight:bold;}
+.container{max-width:900px;margin:auto;padding:20px;}
+
+.question{font-size:18px;margin-bottom:15px;}
+.options button{
+display:block;width:100%;margin:8px 0;padding:10px;
+border-radius:8px;border:1px solid #ccc;background:#fff;
+}
+.options button.selected{background:#4CAF50;color:white;}
+
+canvas{border:1px solid #ccc;margin:10px auto;display:block;}
+
+.timer{text-align:center;color:red;}
+.progress{background:#4CAF50;height:20px;color:#fff;text-align:center;}
+.bar{background:#ddd;height:20px;border-radius:10px;}
+
+button{padding:10px;margin:5px;border:none;border-radius:8px;background:#2196F3;color:white;}
 </style>
 </head>
+
 <body>
 
 <header>Ba mẹ yêu con Linh-Brian</header>
 
 <div class="container">
-<h2>NAPLAN-Style Math Test PRO Full</h2>
-<p>Select Grade:</p>
-<button class="grade-btn" onclick="setGrade(3)" id="g3">3</button>
-<button class="grade-btn" onclick="setGrade(5)" id="g5">5</button>
-<button class="grade-btn" onclick="setGrade(7)" id="g7">7</button>
-<button class="grade-btn" onclick="setGrade(9)" id="g9">9</button>
-<button class="grade-btn" onclick="setGrade(10)" id="g10">10</button>
-<button class="grade-btn" onclick="setGrade(11)" id="g11">11</button>
-<button class="grade-btn" onclick="setGrade(12)" id="g12">12</button>
+
+<h2>NAPLAN Adaptive Math</h2>
+
+<select id="grade">
+<option value="5">Grade 5</option>
+<option value="7">Grade 7</option>
+<option value="9">Grade 9</option>
+<option value="11">Grade 11</option>
+</select>
+
+<button onclick="start()">Start</button>
 
 <div class="timer">Time: <span id="time">65:00</span></div>
-<div class="progress-bar"><div class="progress" id="progress">0%</div></div>
+<div class="bar"><div id="progress" class="progress">0%</div></div>
 
 <div id="quiz"></div>
-<button class="submit-btn" onclick="submitTest()" id="submitBtn" style="display:none;">Submit Test</button>
-<button class="finish-btn" onclick="finishTest()" id="finishBtn" style="display:none;">Finish Early</button>
-<button class="show-sol-btn" onclick="showAllSolutions()" id="showSolBtn" style="display:none;">Show Answers</button>
 
-<div id="report"></div>
-<div id="solution"></div>
+<button onclick="next()">Next</button>
+<button onclick="finish()">Finish</button>
+<button onclick="showHistory()">History</button>
+
+<div id="result"></div>
+<div id="history"></div>
+
 </div>
 
 <script>
-// ---------------- VARIABLES ----------------
-let grade, questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, timerInterval, time=65*60, userAnswers=[];
+let test=[], current=0, score=0, timer;
+let difficulty=1;
 
-// ---------------- RANDOM HELPERS ----------------
-function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
-function shuffle(array){ for(let i=array.length-1;i>0;i--){ let j=rand(0,i); [array[i],array[j]]=[array[j],array[i]];} return array; }
+// ===== RANDOM =====
+function r(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 
-// ---------------- ALLOWED TOPICS ----------------
-const allowedTopics = {
-  3: ["Number","Geometry","Word Problem","Fractions","Time","Money","Measurement"],
-  5: ["Number","Geometry","Word Problem","Fractions","Decimals","Data Interpretation","Measurement"],
-  7: ["Number","Geometry","Word Problem","Algebra","Ratios","Probability","Data Interpretation"],
-  9: ["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation"],
-  10:["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation"],
-  11:["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation","Calculus"],
-  12:["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation","Calculus"]
-};
+// ===== GENERATE QUESTIONS =====
+function gen(g){
 
-// ---------------- QUESTION BANK (~1000 per grade, mock NAPLAN-style) ----------------
-const questionBank = {};
-[3,5,7,9,10,11,12].forEach(g=>{
-    questionBank[g]=[];
-    let topics = allowedTopics[g];
-    for(let i=1;i<=1000;i++){
-        let topic = topics[rand(0,topics.length-1)];
-        let val=rand(1,50);
-        let qText="", a=0, s="";
-        switch(topic){
-            case "Number": let b=rand(1,50); qText=`What is ${val} + ${b}?`; a=val+b; s=`Add step by step: ${val} + ${b} = ${a}`; break;
-            case "Fractions": let n=rand(1,10), d=rand(1,10); qText=`Simplify the fraction ${n*2}/${d*2}`; a=`${(n*2)/(gcd(n*2,d*2))}/${(d*2)/(gcd(n*2,d*2))}`; s=`Divide numerator and denominator by GCD`; break;
-            case "Decimals": let db=rand(1,50)/10; let dc=rand(1,50)/10; qText=`Add ${db} + ${dc}`; a=db+dc; s=`Add decimals: ${db} + ${dc} = ${a}`; break;
-            case "Time": let hour = rand(0,23); let addH = rand(1,5); let newHour = (hour + addH) % 24; qText = `What time is ${hour}:00 + ${addH} hours?`; a = `${newHour}:00`; s = `Add hours: (${hour} + ${addH}) mod 24 = ${newHour}:00`; break;
-            case "Money": let price=rand(1,10); qText=`John buys ${val} items at $${price} each. Total cost?`; a=val*price; s=`Multiply quantity by price: ${val}*${price}=${a}`; break;
-            case "Measurement": let addM=rand(1,20); qText=`A rod is ${val}cm, add ${addM}cm. Total?`; a=val+addM; s=`Add measurements: ${val}+${addM}=${a}`; break;
-            case "Geometry": let w=rand(1,20); qText=`A rectangle with length ${val} and width ${w}. Find area.`; a=val*w; s=`Area = length*width = ${val}*${w}=${a}`; break;
-            case "Data Interpretation": let scores=[val,val+1,val+2]; let avg=scores.reduce((x,y)=>x+y,0)/scores.length; qText=`Table shows scores: ${scores.join(",")}. Find average.`; a=avg; s=`Average = sum/number = ${avg}`; break;
-            case "Algebra": let rhs=val+rand(1,10); qText=`Solve x + ${val} = ${rhs}`; a=rhs-val; s=`Subtract ${val} from both sides: x=${rhs}-${val}=${a}`; break;
-            case "Functions": let fx=rand(1,10); qText=`If f(x)=${val}x, find f(${fx})`; a=val*fx; s=`Multiply: ${val}*${fx}=${a}`; break;
-            case "Trigonometry": let angle=rand(0,90); qText=`Find sin(${angle}°) approximately`; a=Math.sin(angle*Math.PI/180).toFixed(2); s=`Use sin formula: sin(${angle}°) ≈ ${a}`; break;
-            case "Probability": qText=`Probability of head in a coin toss?`; a=0.5; s=`1/2 = 0.5`; break;
-            case "Calculus": qText=`Differentiate ${val}x^2`; a=`${2*val}x`; s=`Power rule: d/dx ${val}x^2 = ${a}`; break;
-            case "Ratios": let r2=rand(1,20); qText=`Simplify ratio ${val}:${r2}`; let g=gcd(val,r2); a=`${val/g}:${r2/g}`; s=`Divide both by GCD ${g}`; break;
-            case "Word Problem": let price2=rand(1,5); qText=`John buys ${val} pencils at $${price2} each. Total cost?`; a=val*price2; s=`Multiply quantity by price: ${val}*${price2}=${a}`; break;
-        }
-        questionBank[g].push({q:qText,a:a,s:s,t:topic});
-    }
+// ===== BAR CHART =====
+let data=[r(5,20),r(5,20),r(5,20)];
+
+return {
+q:`Which bar is highest?`,
+draw:()=>{
+let c=document.getElementById("chart");
+let ctx=c.getContext("2d");
+ctx.clearRect(0,0,300,150);
+data.forEach((v,i)=>{
+ctx.fillRect(i*80+20,150-v*5,40,v*5);
 });
-function gcd(a,b){ return b==0?a:gcd(b,a%b); }
-
-// ---------------- SET GRADE ----------------
-function setGrade(g){
-    grade=g;
-    document.querySelectorAll('.grade-btn').forEach(b=>b.classList.remove('selected'));
-    document.getElementById('g'+g).classList.add('selected');
-    generateTest();
-    startTimer(65*60);
+},
+options:["A","B","C","Equal"],
+correct:data.indexOf(Math.max(...data)),
+topic:"Graph",
+sol:`Compare heights`
+};
 }
 
-// ---------------- GENERATE TEST ----------------
-function generateTest(){
-    questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, userAnswers=[];
-    let bank=shuffle([...questionBank[grade]]);
-    let selected=bank.slice(0,40);
-    selected.forEach(obj=>{ questions.push(obj.q); answers.push(obj.a); solutions.push(obj.s); topicsUsed.push(obj.t); });
-    renderQuestion();
-    document.getElementById("submitBtn").style.display="none";
-    document.getElementById("finishBtn").style.display="block";
-    document.getElementById("showSolBtn").style.display="none";
-    document.getElementById("report").style.display="none";
-    document.getElementById("solution").style.display="none";
+// ===== READING =====
+function readingQ(){
+let apples=r(10,50), sold=r(5,10);
+return {
+q:`A shop has ${apples} apples. It sells ${sold}. How many left?`,
+options:[apples-sold,apples-sold+1,apples-sold-1,apples],
+correct:0,
+topic:"Word Problem",
+sol:`${apples}-${sold}=${apples-sold}`
+};
 }
 
-// ---------------- RENDER QUESTION ----------------
-function renderQuestion(){
-    let i=currentQ;
-    let qHTML=`<div class="question">Q${i+1}: ${questions[i]}</div><input type="text" id="ansInput">`;
-    if(topicsUsed[i]==="Geometry"){
-        qHTML+=`<canvas id="canvas${i}" width="200" height="100"></canvas>`;
-        setTimeout(()=>drawCanvas(i),50);
-    }
-    document.getElementById("quiz").innerHTML=qHTML+`<button class="submit-btn" onclick="checkAnswer()">Submit Answer</button>`;
-    updateProgress();
+// ===== START =====
+function start(){
+test=[];
+for(let i=0;i<40;i++){
+if(Math.random()<0.5) test.push(gen());
+else test.push(readingQ());
 }
 
-// ---------------- DRAW CANVAS ----------------
-function drawCanvas(i){
-    let c=document.getElementById("canvas"+i); if(!c) return;
-    let ctx=c.getContext("2d");
-    ctx.clearRect(0,0,c.width,c.height);
-    ctx.fillStyle="#4CAF50"; ctx.fillRect(20,20,160,60);
-    ctx.strokeStyle="#000"; ctx.strokeRect(20,20,160,60);
+current=0; score=0;
+render();
+timerStart();
 }
 
-// ---------------- CHECK ANSWER ----------------
-function checkAnswer(){
-    let user=document.getElementById("ansInput").value;
-    userAnswers.push(user);
-    let correct = Math.abs(user - answers[currentQ])<0.01 || user.toString().toLowerCase()==answers[currentQ].toString().toLowerCase();
-    if(correct) difficulty=Math.min(3,difficulty+0.5); else difficulty=Math.max(1,difficulty-0.5);
-    currentQ++;
-    if(currentQ<questions.length) renderQuestion();
-    else finishTest();
+// ===== RENDER =====
+function render(){
+let q=test[current];
+
+let html=`<div class="question">Q${current+1}: ${q.q}</div>`;
+
+if(q.draw){
+html+=`<canvas id="chart" width="300" height="150"></canvas>`;
 }
 
-// ---------------- FINISH TEST ----------------
-function finishTest(){
-    clearInterval(timerInterval);
-    document.getElementById("time").innerText="Finished";
-    let score=0, topicErrors={};
-    for(let i=0;i<questions.length;i++){
-        if(Math.abs(userAnswers[i]-answers[i])<0.01 || userAnswers[i].toString().toLowerCase()==answers[i].toString().toLowerCase()) score++;
-        else { topicErrors[topicsUsed[i]]=(topicErrors[topicsUsed[i]]||0)+1; }
-    }
-    let reportText=`Score: ${score}/${questions.length}\n`;
-    if(Object.keys(topicErrors).length>0){
-        reportText+="Topics to improve:\n";
-        for(let t in topicErrors) reportText+=`${t}: ${topicErrors[t]} question(s) wrong\n`;
-    }
-    document.getElementById("quiz").innerHTML="";
-    document.getElementById("submitBtn").style.display="block";
-    document.getElementById("finishBtn").style.display="none";
-    document.getElementById("showSolBtn").style.display="block";
-    document.getElementById("report").style.display="block";
-    document.getElementById("report").innerText=reportText;
+html+=`<div class="options">`;
+
+q.options.forEach((opt,i)=>{
+html+=`<button onclick="select(${i})" id="o${i}">${opt}</button>`;
+});
+
+html+=`</div>`;
+
+document.getElementById("quiz").innerHTML=html;
+
+if(q.draw) q.draw();
+
+updateProgress();
 }
 
-// ---------------- SHOW ALL SOLUTIONS ----------------
-function showAllSolutions(){
-    let sol="";
-    solutions.forEach((s,i)=>{
-        let userAns = userAnswers[i]!==undefined?userAnswers[i]:"No answer";
-        sol+=`Q${i+1}: ${questions[i]}\nYour answer: ${userAns}\nCorrect answer: ${answers[i]}\nSolution: ${s}\n\n`;
-    });
-    document.getElementById("solution").style.display="block";
-    document.getElementById("solution").innerText=sol;
+// ===== SELECT =====
+let selected=null;
+function select(i){
+selected=i;
+for(let j=0;j<4;j++){
+document.getElementById("o"+j).classList.remove("selected");
+}
+document.getElementById("o"+i).classList.add("selected");
 }
 
-// ---------------- TIMER ----------------
-function startTimer(sec){
-    clearInterval(timerInterval); time=sec;
-    timerInterval=setInterval(()=>{
-        let m=Math.floor(time/60), s=time%60;
-        document.getElementById("time").innerText=`${m}:${s<10?'0':''}${s}`;
-        if(time>0) time--; else { clearInterval(timerInterval); finishTest(); }
-    },1000);
+// ===== NEXT =====
+function next(){
+if(selected===null){alert("Select answer");return;}
+
+if(selected==test[current].correct){
+score++; difficulty++;
+}else{
+difficulty=Math.max(1,difficulty-1);
 }
 
-// ---------------- PROGRESS ----------------
+test[current].user=selected;
+
+current++;
+if(current<40) render();
+else finish();
+}
+
+// ===== TIMER =====
+function timerStart(){
+let t=65*60;
+clearInterval(timer);
+timer=setInterval(()=>{
+t--;
+let m=Math.floor(t/60), s=t%60;
+document.getElementById("time").innerText=`${m}:${s<10?'0'+s:s}`;
+if(t<=0) finish();
+},1000);
+}
+
+// ===== PROGRESS =====
 function updateProgress(){
-    let p = Math.round((currentQ/questions.length)*100);
-    let prog=document.getElementById("progress");
-    prog.style.width=p+'%';
-    prog.innerText=p+'%';
+let p=Math.floor((current/40)*100);
+let el=document.getElementById("progress");
+el.style.width=p+"%";
+el.innerText=p+"%";
+}
+
+// ===== FINISH =====
+function finish(){
+clearInterval(timer);
+
+document.getElementById("result").innerHTML=`Score: ${score}/40`;
+
+saveHistory(score);
+}
+
+// ===== SAVE HISTORY =====
+function saveHistory(s){
+let h=JSON.parse(localStorage.getItem("ahlb")||"[]");
+h.push({date:new Date().toLocaleString(),score:s});
+localStorage.setItem("ahlb",JSON.stringify(h));
+}
+
+// ===== SHOW HISTORY =====
+function showHistory(){
+let h=JSON.parse(localStorage.getItem("ahlb")||"[]");
+let html="<h3>History</h3>";
+h.forEach(x=>{
+html+=`<p>${x.date} - Score: ${x.score}</p>`;
+});
+document.getElementById("history").innerHTML=html;
 }
 </script>
+
 </body>
 </html>
