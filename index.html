@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Math App Pro</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+    margin:0;
+    font-family: Arial;
+    background: linear-gradient(135deg,#4facfe,#00f2fe);
+    color:white;
+}
+
+/* Splash */
+#splash {
+    position:fixed;
+    width:100%;
+    height:100%;
+    background:#000000cc;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:24px;
+    text-align:center;
+    z-index:999;
+}
+
+/* Card */
+.container {
+    background:white;
+    color:black;
+    margin:20px;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* Buttons */
+button {
+    padding:10px 15px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    background:#4CAF50;
+    color:white;
+    font-weight:bold;
+}
+
+/* Input */
+input {
+    padding:10px;
+    width:80%;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
+
+/* Badge */
+.badge {
+    background:#4CAF50;
+    color:white;
+    padding:5px 10px;
+    border-radius:10px;
+}
+
+/* Canvas */
+canvas {
+    width:100%;
+    margin-top:10px;
+}
+
+#solution, #hint {
+    white-space: pre-line;
+    background:#f1f1f1;
+    padding:10px;
+    margin-top:10px;
+    display:none;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Splash -->
+<div id="splash">
+❤️ Ba mẹ yêu con Linh-Brian ❤️
+</div>
+
+<div class="container">
+
+<h2>📚 Math App Pro</h2>
+
+<div>
+<span class="badge" id="level">Level 1</span>
+<span class="badge" id="avg">0%</span>
+</div>
+
+<p><b>Chọn lớp:</b></p>
+<button onclick="setGrade(9)">9</button>
+<button onclick="setGrade(10)">10</button>
+<button onclick="setGrade(11)">11</button>
+
+<p><b>Chủ đề:</b></p>
+<button onclick="setTopic('equation')">Phương trình</button>
+<button onclick="setTopic('function')">Hàm số</button>
+<button onclick="setTopic('trig')">Lượng giác</button>
+<button onclick="setTopic('word')">Thực tế</button>
+
+<hr>
+
+<h3 id="question">Bắt đầu học nào 🚀</h3>
+
+<input id="answer" placeholder="Nhập đáp án">
+
+<br>
+
+<button onclick="check()">Kiểm tra</button>
+<button onclick="showHint()">Gợi ý</button>
+<button onclick="showSolution()">Lời giải</button>
+
+<p id="result"></p>
+
+<div id="hint"></div>
+<div id="solution"></div>
+
+<canvas id="graph" height="200"></canvas>
+
+</div>
+
+<script>
+let grade, topic;
+let correctAnswer;
+let level = localStorage.getItem("level") || 1;
+let history = JSON.parse(localStorage.getItem("history") || "[]");
+
+// Splash auto hide
+setTimeout(()=>document.getElementById("splash").style.display="none",2500);
+
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+function setGrade(g){ grade=g; generate(); }
+function setTopic(t){ topic=t; generate(); }
+
+function generate(){
+    if(!grade || !topic) return;
+
+    hint.style.display="none";
+    solution.style.display="none";
+    result.innerText="";
+
+    let max = level*5;
+
+    if(topic==="equation"){
+        let a=rand(1,max), x=rand(1,max), b=rand(1,max);
+        let c=a*x+b;
+
+        question.innerText=`${a}x + ${b} = ${c}`;
+        correctAnswer=x;
+
+        hint.innerText="Chuyển số sang vế phải rồi chia";
+        solution.innerText=`${a}x = ${c-b}\n→ x=${x}`;
+    }
+
+    if(topic==="function"){
+        let k=rand(1,max), x=rand(1,max);
+
+        question.innerText=`y=${k}x, x=${x}`;
+        correctAnswer=k*x;
+
+        hint.innerText="Thay x vào";
+        solution.innerText=`y=${k}×${x}=${k*x}`;
+
+        drawGraph(k);
+    }
+
+    if(topic==="trig"){
+        let a=[30,45,60][rand(0,2)];
+        let val=a==30?0.5:a==45?0.707:0.866;
+
+        question.innerText=`sin(${a}°)=?`;
+        correctAnswer=val;
+
+        hint.innerText="Nhớ bảng sin";
+        solution.innerText=`≈ ${val}`;
+    }
+
+    if(topic==="word"){
+        let p=rand(10,50), q=rand(2,5);
+
+        question.innerText=`${p}$ × ${q} = ?`;
+        correctAnswer=p*q;
+
+        hint.innerText="Nhân vào";
+        solution.innerText=`${p*q}`;
+    }
+
+    updateStats();
+}
+
+function check(){
+    let user=document.getElementById("answer").value;
+
+    let correct=Math.abs(user-correctAnswer)<0.01;
+
+    history.push(correct?1:0);
+
+    if(correct){
+        result.innerText="✅ Giỏi lắm!";
+        level++;
+    } else {
+        result.innerText="❌ Thử lại nhé!";
+        hint.style.display="block";
+    }
+
+    localStorage.setItem("level",level);
+    localStorage.setItem("history",JSON.stringify(history));
+
+    updateStats();
+    setTimeout(generate,1500);
+}
+
+function updateStats(){
+    let avg=history.reduce((a,b)=>a+b,0)/(history.length||1);
+
+    document.getElementById("level").innerText="Level "+level;
+    document.getElementById("avg").innerText=Math.round(avg*100)+"%";
+}
+
+function showHint(){ hint.style.display="block"; }
+function showSolution(){ solution.style.display="block"; }
+
+function drawGraph(k){
+    let c=document.getElementById("graph");
+    let ctx=c.getContext("2d");
+
+    ctx.clearRect(0,0,c.width,c.height);
+
+    ctx.beginPath();
+
+    for(let x=-10;x<=10;x++){
+        let y=k*x;
+        let px=c.width/2 + x*10;
+        let py=c.height/2 - y*10;
+
+        if(x==-10) ctx.moveTo(px,py);
+        else ctx.lineTo(px,py);
+    }
+
+    ctx.stroke();
+}
+</script>
+
+</body>
+</html>
