@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAPLAN-Style Math Test App 3-12 PRO</title>
+<title>NAPLAN-Style Math Test PRO Full</title>
 <style>
 body { margin:0; font-family: Arial, sans-serif; background:#eef2f7; }
 header { background:#4CAF50; color:white; text-align:center; padding:15px; font-size:1.3em; font-weight:bold; }
@@ -19,6 +19,9 @@ input[type="text"] { padding:8px; width:80px; margin-top:5px; }
 .progress { height:100%; width:0%; background:#4CAF50; border-radius:10px; text-align:center; color:white; line-height:20px; }
 #solution, #report { background:#f1f1f1; padding:10px; margin-top:10px; white-space: pre-line; display:none; }
 canvas { border:1px solid #ccc; margin-top:10px; }
+.finish-btn { background:#f44336; color:white; }
+.submit-btn { background:#4CAF50; color:white; }
+.show-sol-btn { background:#ff9800; color:white; }
 </style>
 </head>
 <body>
@@ -26,7 +29,7 @@ canvas { border:1px solid #ccc; margin-top:10px; }
 <header>Ba mẹ yêu con Linh-Brian</header>
 
 <div class="container">
-<h2>NAPLAN-Style Math Test PRO</h2>
+<h2>NAPLAN-Style Math Test PRO Full</h2>
 <p>Select Grade:</p>
 <button class="grade-btn" onclick="setGrade(3)" id="g3">3</button>
 <button class="grade-btn" onclick="setGrade(5)" id="g5">5</button>
@@ -40,8 +43,9 @@ canvas { border:1px solid #ccc; margin-top:10px; }
 <div class="progress-bar"><div class="progress" id="progress">0%</div></div>
 
 <div id="quiz"></div>
-<button onclick="submitTest()" id="submitBtn" style="display:none;">Submit Test</button>
-<button onclick="showAllSolutions()" id="showSolBtn" style="display:none;">Show All Solutions</button>
+<button class="submit-btn" onclick="submitTest()" id="submitBtn" style="display:none;">Submit Test</button>
+<button class="finish-btn" onclick="finishTest()" id="finishBtn" style="display:none;">Finish Early</button>
+<button class="show-sol-btn" onclick="showAllSolutions()" id="showSolBtn" style="display:none;">Show Answers</button>
 
 <div id="report"></div>
 <div id="solution"></div>
@@ -51,10 +55,11 @@ canvas { border:1px solid #ccc; margin-top:10px; }
 // ---------------- VARIABLES ----------------
 let grade, questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, timerInterval, time=65*60, userAnswers=[];
 
-// ---------------- RANDOM HELPER ----------------
-function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+// ---------------- RANDOM HELPERS ----------------
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function shuffle(array){ for(let i=array.length-1;i>0;i--){ let j=rand(0,i); [array[i],array[j]]=[array[j],array[i]];} return array; }
 
-// ---------------- ALLOWED TOPICS PER GRADE ----------------
+// ---------------- ALLOWED TOPICS ----------------
 const allowedTopics = {
   3: ["Number","Geometry","Word Problem","Fractions","Time","Money","Measurement"],
   5: ["Number","Geometry","Word Problem","Fractions","Decimals","Data Interpretation","Measurement"],
@@ -65,7 +70,7 @@ const allowedTopics = {
   12:["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation","Calculus"]
 };
 
-// ---------------- QUESTION BANKS (~1000 each grade, mock NAPLAN-style) ----------------
+// ---------------- QUESTION BANK (~1000 per grade, mock NAPLAN-style) ----------------
 const questionBank = {};
 [3,5,7,9,10,11,12].forEach(g=>{
     questionBank[g]=[];
@@ -75,132 +80,45 @@ const questionBank = {};
         let val=rand(1,50);
         let qText="", a=0, s="";
         switch(topic){
-            case "Number": 
-                let b=rand(1,50);
-                qText=`What is ${val} + ${b}?`; 
-                a=val+b; 
-                s=`Add step by step: ${val} + ${b} = ${a}`; 
-            break;
-            case "Fractions": 
-                let n=rand(1,10), d=rand(1,10);
-                qText=`Simplify the fraction ${n*2}/${d*2}`; 
-                a=`${(n*2)/(gcd(n*2,d*2))}/${(d*2)/(gcd(n*2,d*2))}`; 
-                s=`Divide numerator and denominator by GCD`; 
-            break;
-            case "Decimals": 
-                let db=rand(1,50)/10; let dc=rand(1,50)/10;
-                qText=`Add ${db} + ${dc}`; 
-                a=db+dc; 
-                s=`Add decimals: ${db} + ${dc} = ${a}`; 
-            break;
-            case "Time": 
-                let hour = rand(0,23);
-                let addH = rand(1,5);
-                let newHour = (hour + addH) % 24;
-                qText = `What time is ${hour}:00 + ${addH} hours?`;
-                a = `${newHour}:00`;
-                s = `Add hours: (${hour} + ${addH}) mod 24 = ${newHour}:00`;
-            break;
-            case "Money": 
-                let price=rand(1,10);
-                qText=`John buys ${val} items at $${price} each. Total cost?`; 
-                a=val*price; 
-                s=`Multiply quantity by price: ${val}*${price}=${a}`; 
-            break;
-            case "Measurement": 
-                let addM=rand(1,20);
-                qText=`A rod is ${val}cm, add ${addM}cm. Total?`; 
-                a=val+addM; 
-                s=`Add measurements: ${val}+${addM}=${a}`; 
-            break;
-            case "Geometry": 
-                let w=rand(1,20);
-                qText=`A rectangle with length ${val} and width ${w}. Find area.`; 
-                a=val*w; 
-                s=`Area = length*width = ${val}*${w}=${a}`; 
-            break;
-            case "Data Interpretation": 
-                let scores=[val,val+1,val+2]; 
-                let avg=scores.reduce((x,y)=>x+y,0)/scores.length;
-                qText=`Table shows scores: ${scores.join(",")}. Find average.`; 
-                a=avg; 
-                s=`Average = sum/number = ${avg}`; 
-            break;
-            case "Algebra": 
-                let rhs=val+rand(1,10);
-                qText=`Solve x + ${val} = ${rhs}`; 
-                a=rhs-val; 
-                s=`Subtract ${val} from both sides: x=${rhs}-${val}=${a}`; 
-            break;
-            case "Functions": 
-                let fx=rand(1,10);
-                qText=`If f(x)=${val}x, find f(${fx})`; 
-                a=val*fx; 
-                s=`Multiply: ${val}*${fx}=${a}`; 
-            break;
-            case "Trigonometry": 
-                let angle=rand(0,90);
-                qText=`Find sin(${angle}°) approximately`; 
-                a=Math.sin(angle*Math.PI/180).toFixed(2); 
-                s=`Use sin formula: sin(${angle}°) ≈ ${a}`; 
-            break;
-            case "Probability": 
-                qText=`Probability of head in a coin toss?`; 
-                a=0.5; 
-                s=`1/2 = 0.5`; 
-            break;
-            case "Calculus": 
-                qText=`Differentiate ${val}x^2`; 
-                a=`${2*val}x`; 
-                s=`Power rule: d/dx ${val}x^2 = ${a}`; 
-            break;
-            case "Ratios": 
-                let r2=rand(1,20);
-                qText=`Simplify ratio ${val}:${r2}`; 
-                let g=gcd(val,r2);
-                a=`${val/g}:${r2/g}`; 
-                s=`Divide both by GCD ${g}`; 
-            break;
-            case "Word Problem": 
-                let price2=rand(1,5);
-                qText=`John buys ${val} pencils at $${price2} each. Total cost?`; 
-                a=val*price2; 
-                s=`Multiply quantity by price: ${val}*${price2}=${a}`; 
-            break;
+            case "Number": let b=rand(1,50); qText=`What is ${val} + ${b}?`; a=val+b; s=`Add step by step: ${val} + ${b} = ${a}`; break;
+            case "Fractions": let n=rand(1,10), d=rand(1,10); qText=`Simplify the fraction ${n*2}/${d*2}`; a=`${(n*2)/(gcd(n*2,d*2))}/${(d*2)/(gcd(n*2,d*2))}`; s=`Divide numerator and denominator by GCD`; break;
+            case "Decimals": let db=rand(1,50)/10; let dc=rand(1,50)/10; qText=`Add ${db} + ${dc}`; a=db+dc; s=`Add decimals: ${db} + ${dc} = ${a}`; break;
+            case "Time": let hour = rand(0,23); let addH = rand(1,5); let newHour = (hour + addH) % 24; qText = `What time is ${hour}:00 + ${addH} hours?`; a = `${newHour}:00`; s = `Add hours: (${hour} + ${addH}) mod 24 = ${newHour}:00`; break;
+            case "Money": let price=rand(1,10); qText=`John buys ${val} items at $${price} each. Total cost?`; a=val*price; s=`Multiply quantity by price: ${val}*${price}=${a}`; break;
+            case "Measurement": let addM=rand(1,20); qText=`A rod is ${val}cm, add ${addM}cm. Total?`; a=val+addM; s=`Add measurements: ${val}+${addM}=${a}`; break;
+            case "Geometry": let w=rand(1,20); qText=`A rectangle with length ${val} and width ${w}. Find area.`; a=val*w; s=`Area = length*width = ${val}*${w}=${a}`; break;
+            case "Data Interpretation": let scores=[val,val+1,val+2]; let avg=scores.reduce((x,y)=>x+y,0)/scores.length; qText=`Table shows scores: ${scores.join(",")}. Find average.`; a=avg; s=`Average = sum/number = ${avg}`; break;
+            case "Algebra": let rhs=val+rand(1,10); qText=`Solve x + ${val} = ${rhs}`; a=rhs-val; s=`Subtract ${val} from both sides: x=${rhs}-${val}=${a}`; break;
+            case "Functions": let fx=rand(1,10); qText=`If f(x)=${val}x, find f(${fx})`; a=val*fx; s=`Multiply: ${val}*${fx}=${a}`; break;
+            case "Trigonometry": let angle=rand(0,90); qText=`Find sin(${angle}°) approximately`; a=Math.sin(angle*Math.PI/180).toFixed(2); s=`Use sin formula: sin(${angle}°) ≈ ${a}`; break;
+            case "Probability": qText=`Probability of head in a coin toss?`; a=0.5; s=`1/2 = 0.5`; break;
+            case "Calculus": qText=`Differentiate ${val}x^2`; a=`${2*val}x`; s=`Power rule: d/dx ${val}x^2 = ${a}`; break;
+            case "Ratios": let r2=rand(1,20); qText=`Simplify ratio ${val}:${r2}`; let g=gcd(val,r2); a=`${val/g}:${r2/g}`; s=`Divide both by GCD ${g}`; break;
+            case "Word Problem": let price2=rand(1,5); qText=`John buys ${val} pencils at $${price2} each. Total cost?`; a=val*price2; s=`Multiply quantity by price: ${val}*${price2}=${a}`; break;
         }
         questionBank[g].push({q:qText,a:a,s:s,t:topic});
     }
 });
-
-// GCD helper
 function gcd(a,b){ return b==0?a:gcd(b,a%b); }
 
-// ---------------- SELECT GRADE ----------------
+// ---------------- SET GRADE ----------------
 function setGrade(g){
     grade=g;
     document.querySelectorAll('.grade-btn').forEach(b=>b.classList.remove('selected'));
     document.getElementById('g'+g).classList.add('selected');
     generateTest();
-    startTimer(time);
+    startTimer(65*60);
 }
 
 // ---------------- GENERATE TEST ----------------
 function generateTest(){
     questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, difficulty=1, userAnswers=[];
-    let bank=questionBank[grade];
-    let usedIndexes=new Set();
-    for(let i=0;i<40;i++){
-        let idx;
-        do{ idx=rand(0,bank.length-1); }while(usedIndexes.has(idx));
-        usedIndexes.add(idx);
-        let obj=bank[idx];
-        questions.push(obj.q);
-        answers.push(obj.a);
-        solutions.push(obj.s);
-        topicsUsed.push(obj.t);
-    }
+    let bank=shuffle([...questionBank[grade]]);
+    let selected=bank.slice(0,40);
+    selected.forEach(obj=>{ questions.push(obj.q); answers.push(obj.a); solutions.push(obj.s); topicsUsed.push(obj.t); });
     renderQuestion();
     document.getElementById("submitBtn").style.display="none";
+    document.getElementById("finishBtn").style.display="block";
     document.getElementById("showSolBtn").style.display="none";
     document.getElementById("report").style.display="none";
     document.getElementById("solution").style.display="none";
@@ -214,7 +132,7 @@ function renderQuestion(){
         qHTML+=`<canvas id="canvas${i}" width="200" height="100"></canvas>`;
         setTimeout(()=>drawCanvas(i),50);
     }
-    document.getElementById("quiz").innerHTML=qHTML+`<button onclick="checkAnswer()">Submit Answer</button>`;
+    document.getElementById("quiz").innerHTML=qHTML+`<button class="submit-btn" onclick="checkAnswer()">Submit Answer</button>`;
     updateProgress();
 }
 
@@ -254,6 +172,7 @@ function finishTest(){
     }
     document.getElementById("quiz").innerHTML="";
     document.getElementById("submitBtn").style.display="block";
+    document.getElementById("finishBtn").style.display="none";
     document.getElementById("showSolBtn").style.display="block";
     document.getElementById("report").style.display="block";
     document.getElementById("report").innerText=reportText;
@@ -262,7 +181,10 @@ function finishTest(){
 // ---------------- SHOW ALL SOLUTIONS ----------------
 function showAllSolutions(){
     let sol="";
-    solutions.forEach((s,i)=>sol+=`Q${i+1}: ${s}\n\n`);
+    solutions.forEach((s,i)=>{
+        let userAns = userAnswers[i]!==undefined?userAnswers[i]:"No answer";
+        sol+=`Q${i+1}: ${questions[i]}\nYour answer: ${userAns}\nCorrect answer: ${answers[i]}\nSolution: ${s}\n\n`;
+    });
     document.getElementById("solution").style.display="block";
     document.getElementById("solution").innerText=sol;
 }
