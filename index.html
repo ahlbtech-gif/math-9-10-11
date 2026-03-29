@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAPLAN-Style Math Test App</title>
+<title>NAPLAN-Style Math Test App 3-12</title>
 <style>
 body { margin:0; font-family: Arial, sans-serif; background:#eef2f7; }
 header { background:#4CAF50; color:white; text-align:center; padding:15px; font-size:1.3em; font-weight:bold; }
@@ -54,26 +54,41 @@ let grade, questions=[], answers=[], solutions=[], topicsUsed=[], currentQ=0, di
 // ---------------- RANDOM HELPER ----------------
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 
-// ---------------- QUESTION BANKS (~100 each grade) ----------------
-// For brevity, we will generate mock questions using templates for demo
-// Production: fill ~100 real NAPLAN-like questions per grade
+// ---------------- ALLOWED TOPICS PER GRADE ----------------
+const allowedTopics = {
+  3: ["Number","Geometry","Word Problem","Fractions","Time","Money","Measurement"],
+  5: ["Number","Geometry","Word Problem","Fractions","Decimals","Data Interpretation","Measurement"],
+  7: ["Number","Geometry","Word Problem","Algebra","Ratios","Probability","Data Interpretation"],
+  9: ["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation"],
+  10:["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation"],
+  11:["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation","Calculus"],
+  12:["Number","Algebra","Geometry","Word Problem","Functions","Trigonometry","Probability","Data Interpretation","Calculus"]
+};
+
+// ---------------- QUESTION BANKS (~1000 each grade, mock NAPLAN-style) ----------------
 const questionBank = {};
 [3,5,7,9,10,11,12].forEach(g=>{
     questionBank[g]=[];
-    for(let i=1;i<=100;i++){
-        let topic=["Algebra","Number","Geometry","Data Interpretation","Functions","Trigonometry","Probability","Word Problem"][rand(0,7)];
-        let val=rand(1,20);
-        let qText="";
-        let a=0;
-        let s="";
+    let topics = allowedTopics[g];
+    for(let i=1;i<=1000;i++){
+        let topic = topics[rand(0,topics.length-1)];
+        let val=rand(1,50);
+        let qText="", a=0, s="";
         switch(topic){
-            case "Number": qText=`What is ${val} + ${rand(1,20)}?`; a=val+rand(1,20); s=`Add numbers step by step`; break;
-            case "Algebra": qText=`Solve x + ${val} = ${val+rand(1,10)}`; a=rand(1,10); s=`Subtract ${val} from both sides`; break;
-            case "Geometry": qText=`A rectangle with length ${val} and width ${rand(1,10)}. Find area.`; a=val*rand(1,10); s=`Area = length*width`; break;
+            case "Number": qText=`What is ${val} + ${rand(1,50)}?`; a=val+rand(1,50); s=`Add numbers step by step`; break;
+            case "Fractions": qText=`Simplify the fraction ${rand(1,10)*2}/${rand(1,10)*2}`; a="simplified"; s=`Divide numerator and denominator by GCD`; break;
+            case "Decimals": qText=`Add ${val/10} + ${rand(1,50)/10}`; a=val/10+rand(1,50)/10; s=`Add decimals`; break;
+            case "Time": qText=`What time is ${val}:00 + ${rand(1,5)} hours?`; a="time answer"; s=`Add hours to time`; break;
+            case "Money": qText=`John buys ${val} items at $${rand(1,10)} each. Total cost?`; a=val*rand(1,10); s=`Multiply quantity by price`; break;
+            case "Measurement": qText=`A rod is ${val}cm, add ${rand(1,20)}cm. Total?`; a=val+rand(1,20); s=`Add measurements`; break;
+            case "Geometry": qText=`A rectangle with length ${val} and width ${rand(1,20)}. Find area.`; a=val*rand(1,20); s=`Area = length*width`; break;
             case "Data Interpretation": qText=`Table shows scores: ${val},${val+1},${val+2}. Find average.`; a=(val+val+1+val+2)/3; s=`Average = sum/3`; break;
+            case "Algebra": qText=`Solve x + ${val} = ${val+rand(1,10)}`; a=rand(1,10); s=`Subtract ${val} from both sides`; break;
             case "Functions": qText=`If f(x)=${val}x, find f(${rand(1,10)})`; a=val*rand(1,10); s=`Multiply f by input`; break;
             case "Trigonometry": qText=`Find sin(${rand(0,90)}°)`; a=rand(0,1); s=`Use sin formula`; break;
             case "Probability": qText=`Probability of head in coin toss?`; a=0.5; s=`1/2`; break;
+            case "Calculus": qText=`Differentiate ${val}x^2`; a=2*val+"x"; s=`Use power rule`; break;
+            case "Ratios": qText=`Simplify ratio ${val}:${rand(1,20)}`; a="simplified ratio"; s=`Divide both numbers by GCD`; break;
             case "Word Problem": qText=`John buys ${val} pencils at $${rand(1,5)} each. Total cost?`; a=val*rand(1,5); s=`Multiply quantity by price`; break;
         }
         questionBank[g].push({q:qText,a:a,s:s,t:topic});
@@ -99,8 +114,10 @@ function generateTest(){
         do{ idx=rand(0,bank.length-1); }while(usedIndexes.has(idx));
         usedIndexes.add(idx);
         let obj=bank[idx];
-        let q=obj.q, a=obj.a, s=obj.s, t=obj.t;
-        questions.push(q); answers.push(a); solutions.push(s); topicsUsed.push(t);
+        questions.push(obj.q);
+        answers.push(obj.a);
+        solutions.push(obj.s);
+        topicsUsed.push(obj.t);
     }
     renderQuestion();
     document.getElementById("submitBtn").style.display="none";
