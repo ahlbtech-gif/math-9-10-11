@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAPLAN-Style Math Test App 3-12</title>
+<title>NAPLAN-Style Math Test App 3-12 PRO</title>
 <style>
 body { margin:0; font-family: Arial, sans-serif; background:#eef2f7; }
 header { background:#4CAF50; color:white; text-align:center; padding:15px; font-size:1.3em; font-weight:bold; }
@@ -26,7 +26,7 @@ canvas { border:1px solid #ccc; margin-top:10px; }
 <header>Ba mẹ yêu con Linh-Brian</header>
 
 <div class="container">
-<h2>NAPLAN-Style Math Test</h2>
+<h2>NAPLAN-Style Math Test PRO</h2>
 <p>Select Grade:</p>
 <button class="grade-btn" onclick="setGrade(3)" id="g3">3</button>
 <button class="grade-btn" onclick="setGrade(5)" id="g5">5</button>
@@ -75,25 +75,105 @@ const questionBank = {};
         let val=rand(1,50);
         let qText="", a=0, s="";
         switch(topic){
-            case "Number": qText=`What is ${val} + ${rand(1,50)}?`; a=val+rand(1,50); s=`Add numbers step by step`; break;
-            case "Fractions": qText=`Simplify the fraction ${rand(1,10)*2}/${rand(1,10)*2}`; a="simplified"; s=`Divide numerator and denominator by GCD`; break;
-            case "Decimals": qText=`Add ${val/10} + ${rand(1,50)/10}`; a=val/10+rand(1,50)/10; s=`Add decimals`; break;
-            case "Time": qText=`What time is ${val}:00 + ${rand(1,5)} hours?`; a="time answer"; s=`Add hours to time`; break;
-            case "Money": qText=`John buys ${val} items at $${rand(1,10)} each. Total cost?`; a=val*rand(1,10); s=`Multiply quantity by price`; break;
-            case "Measurement": qText=`A rod is ${val}cm, add ${rand(1,20)}cm. Total?`; a=val+rand(1,20); s=`Add measurements`; break;
-            case "Geometry": qText=`A rectangle with length ${val} and width ${rand(1,20)}. Find area.`; a=val*rand(1,20); s=`Area = length*width`; break;
-            case "Data Interpretation": qText=`Table shows scores: ${val},${val+1},${val+2}. Find average.`; a=(val+val+1+val+2)/3; s=`Average = sum/3`; break;
-            case "Algebra": qText=`Solve x + ${val} = ${val+rand(1,10)}`; a=rand(1,10); s=`Subtract ${val} from both sides`; break;
-            case "Functions": qText=`If f(x)=${val}x, find f(${rand(1,10)})`; a=val*rand(1,10); s=`Multiply f by input`; break;
-            case "Trigonometry": qText=`Find sin(${rand(0,90)}°)`; a=rand(0,1); s=`Use sin formula`; break;
-            case "Probability": qText=`Probability of head in coin toss?`; a=0.5; s=`1/2`; break;
-            case "Calculus": qText=`Differentiate ${val}x^2`; a=2*val+"x"; s=`Use power rule`; break;
-            case "Ratios": qText=`Simplify ratio ${val}:${rand(1,20)}`; a="simplified ratio"; s=`Divide both numbers by GCD`; break;
-            case "Word Problem": qText=`John buys ${val} pencils at $${rand(1,5)} each. Total cost?`; a=val*rand(1,5); s=`Multiply quantity by price`; break;
+            case "Number": 
+                let b=rand(1,50);
+                qText=`What is ${val} + ${b}?`; 
+                a=val+b; 
+                s=`Add step by step: ${val} + ${b} = ${a}`; 
+            break;
+            case "Fractions": 
+                let n=rand(1,10), d=rand(1,10);
+                qText=`Simplify the fraction ${n*2}/${d*2}`; 
+                a=`${(n*2)/(gcd(n*2,d*2))}/${(d*2)/(gcd(n*2,d*2))}`; 
+                s=`Divide numerator and denominator by GCD`; 
+            break;
+            case "Decimals": 
+                let db=rand(1,50)/10; let dc=rand(1,50)/10;
+                qText=`Add ${db} + ${dc}`; 
+                a=db+dc; 
+                s=`Add decimals: ${db} + ${dc} = ${a}`; 
+            break;
+            case "Time": 
+                let hour = rand(0,23);
+                let addH = rand(1,5);
+                let newHour = (hour + addH) % 24;
+                qText = `What time is ${hour}:00 + ${addH} hours?`;
+                a = `${newHour}:00`;
+                s = `Add hours: (${hour} + ${addH}) mod 24 = ${newHour}:00`;
+            break;
+            case "Money": 
+                let price=rand(1,10);
+                qText=`John buys ${val} items at $${price} each. Total cost?`; 
+                a=val*price; 
+                s=`Multiply quantity by price: ${val}*${price}=${a}`; 
+            break;
+            case "Measurement": 
+                let addM=rand(1,20);
+                qText=`A rod is ${val}cm, add ${addM}cm. Total?`; 
+                a=val+addM; 
+                s=`Add measurements: ${val}+${addM}=${a}`; 
+            break;
+            case "Geometry": 
+                let w=rand(1,20);
+                qText=`A rectangle with length ${val} and width ${w}. Find area.`; 
+                a=val*w; 
+                s=`Area = length*width = ${val}*${w}=${a}`; 
+            break;
+            case "Data Interpretation": 
+                let scores=[val,val+1,val+2]; 
+                let avg=scores.reduce((x,y)=>x+y,0)/scores.length;
+                qText=`Table shows scores: ${scores.join(",")}. Find average.`; 
+                a=avg; 
+                s=`Average = sum/number = ${avg}`; 
+            break;
+            case "Algebra": 
+                let rhs=val+rand(1,10);
+                qText=`Solve x + ${val} = ${rhs}`; 
+                a=rhs-val; 
+                s=`Subtract ${val} from both sides: x=${rhs}-${val}=${a}`; 
+            break;
+            case "Functions": 
+                let fx=rand(1,10);
+                qText=`If f(x)=${val}x, find f(${fx})`; 
+                a=val*fx; 
+                s=`Multiply: ${val}*${fx}=${a}`; 
+            break;
+            case "Trigonometry": 
+                let angle=rand(0,90);
+                qText=`Find sin(${angle}°) approximately`; 
+                a=Math.sin(angle*Math.PI/180).toFixed(2); 
+                s=`Use sin formula: sin(${angle}°) ≈ ${a}`; 
+            break;
+            case "Probability": 
+                qText=`Probability of head in a coin toss?`; 
+                a=0.5; 
+                s=`1/2 = 0.5`; 
+            break;
+            case "Calculus": 
+                qText=`Differentiate ${val}x^2`; 
+                a=`${2*val}x`; 
+                s=`Power rule: d/dx ${val}x^2 = ${a}`; 
+            break;
+            case "Ratios": 
+                let r2=rand(1,20);
+                qText=`Simplify ratio ${val}:${r2}`; 
+                let g=gcd(val,r2);
+                a=`${val/g}:${r2/g}`; 
+                s=`Divide both by GCD ${g}`; 
+            break;
+            case "Word Problem": 
+                let price2=rand(1,5);
+                qText=`John buys ${val} pencils at $${price2} each. Total cost?`; 
+                a=val*price2; 
+                s=`Multiply quantity by price: ${val}*${price2}=${a}`; 
+            break;
         }
         questionBank[g].push({q:qText,a:a,s:s,t:topic});
     }
 });
+
+// GCD helper
+function gcd(a,b){ return b==0?a:gcd(b,a%b); }
 
 // ---------------- SELECT GRADE ----------------
 function setGrade(g){
