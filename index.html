@@ -1,128 +1,53 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Math App Pro</title>
-
+<title>Math 45-min Test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
-body {
-    margin:0;
-    font-family: Arial;
-    background: linear-gradient(135deg,#4facfe,#00f2fe);
-    color:white;
-}
-
-/* Splash */
-#splash {
-    position:fixed;
-    width:100%;
-    height:100%;
-    background:#000000cc;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-size:24px;
-    text-align:center;
-    z-index:999;
-}
-
-/* Card */
-.container {
-    background:white;
-    color:black;
-    margin:20px;
-    padding:20px;
-    border-radius:15px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.2);
-}
-
-/* Buttons */
-button {
-    padding:10px 15px;
-    margin:5px;
-    border:none;
-    border-radius:8px;
-    background:#4CAF50;
-    color:white;
-    font-weight:bold;
-}
-
-/* Input */
-input {
-    padding:10px;
-    width:80%;
-    border-radius:8px;
-    border:1px solid #ccc;
-}
-
-/* Badge */
-.badge {
-    background:#4CAF50;
-    color:white;
-    padding:5px 10px;
-    border-radius:10px;
-}
-
-/* Canvas */
-canvas {
-    width:100%;
-    margin-top:10px;
-}
-
-#solution, #hint {
-    white-space: pre-line;
-    background:#f1f1f1;
-    padding:10px;
-    margin-top:10px;
-    display:none;
-}
+body { font-family: Arial; background:#eef2f7; margin:0; padding:0; }
+.container { max-width:900px; margin:auto; padding:20px; }
+h2 { text-align:center; }
+button { padding:10px 15px; margin:5px; border:none; border-radius:8px; background:#4CAF50; color:white; font-weight:bold; }
+input { padding:8px; width:60px; margin-top:5px; }
+.question { margin:15px 0; }
+#solution, #report { white-space: pre-line; background:#f1f1f1; padding:10px; margin-top:10px; display:none; }
+canvas { border:1px solid #ccc; margin-top:10px; width:100%; }
+.timer { font-size:20px; color:red; text-align:center; }
 </style>
 </head>
-
 <body>
 
-<!-- Splash -->
-<div id="splash">
-❤️ Ba mẹ yêu con Linh-Brian ❤️
-</div>
-
 <div class="container">
+<h2>📚 Math 45-min Test</h2>
 
-<h2>📚 Math App Pro</h2>
+<p>Select Grade:</p>
+<button onclick="setGrade(9)">Grade 9</button>
+<button onclick="setGrade(10)">Grade 10</button>
+<button onclick="setGrade(11)">Grade 11</button>
 
-<div>
-<span class="badge" id="level">Level 1</span>
-<span class="badge" id="avg">0%</span>
-</div>
+<p>Select Mode:</p>
+<button onclick="setMode('full')">Full Test 45 mins</button>
+<button onclick="setMode('advanced')">Advanced Mode</button>
 
-<p><b>Chọn lớp:</b></p>
-<button onclick="setGrade(9)">9</button>
-<button onclick="setGrade(10)">10</button>
-<button onclick="setGrade(11)">11</button>
-
-<p><b>Chủ đề:</b></p>
-<button onclick="setTopic('equation')">Phương trình</button>
-<button onclick="setTopic('function')">Hàm số</button>
-<button onclick="setTopic('trig')">Lượng giác</button>
-<button onclick="setTopic('word')">Thực tế</button>
+<p>Select Topics:</p>
+<button onclick="setTopic('algebra')">Algebra</button>
+<button onclick="setTopic('functions')">Functions</button>
+<button onclick="setTopic('trig')">Trigonometry</button>
+<button onclick="setTopic('simplify')">Simplify Expressions</button>
+<button onclick="setTopic('integrals')">Integrals</button>
+<button onclick="setTopic('word')">Word Problems</button>
 
 <hr>
 
-<h3 id="question">Bắt đầu học nào 🚀</h3>
+<div class="timer">Time: <span id="time">45:00</span></div>
 
-<input id="answer" placeholder="Nhập đáp án">
+<div id="quiz"></div>
 
-<br>
+<button onclick="submitTest()">Submit Test</button>
+<button onclick="showAllSolutions()">Show All Solutions</button>
 
-<button onclick="check()">Kiểm tra</button>
-<button onclick="showHint()">Gợi ý</button>
-<button onclick="showSolution()">Lời giải</button>
-
-<p id="result"></p>
-
-<div id="hint"></div>
+<div id="report"></div>
 <div id="solution"></div>
 
 <canvas id="graph" height="200"></canvas>
@@ -130,125 +55,124 @@ canvas {
 </div>
 
 <script>
-let grade, topic;
-let correctAnswer;
-let level = localStorage.getItem("level") || 1;
-let history = JSON.parse(localStorage.getItem("history") || "[]");
-
-// Splash auto hide
-setTimeout(()=>document.getElementById("splash").style.display="none",2500);
+let grade, mode, topic;
+let questions = [];
+let answers = [];
+let solutions = [];
+let topicsUsed = [];
 
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 
-function setGrade(g){ grade=g; generate(); }
-function setTopic(t){ topic=t; generate(); }
+function setGrade(g){ grade=g; generateTest(); }
+function setMode(m){ mode=m; generateTest(); }
+function setTopic(t){ topic=t; generateTest(); }
 
-function generate(){
-    if(!grade || !topic) return;
+function generateTest(){
+    if(!grade || !mode || !topic) return;
+    questions=[]; answers=[]; solutions=[]; topicsUsed=[];
 
-    hint.style.display="none";
-    solution.style.display="none";
-    result.innerText="";
+    // 10 questions for example
+    for(let i=0;i<10;i++){
+        let q="", a=0, s="", tpc=topic;
 
-    let max = level*5;
+        if(topic==="algebra"){
+            let x=rand(1,10), b=rand(1,10);
+            q=`Solve: x + ${b} = ${x+b}`;
+            a=x;
+            s=`x + ${b} = ${x+b}\n=> x = ${a}`;
+        }
+        if(topic==="functions"){
+            let k=rand(1,5), x=rand(1,5);
+            q=`y=${k}x, x=${x}. Find y`;
+            a=k*x;
+            s=`y=${k}*${x}=${a}`;
+        }
+        if(topic==="trig"){
+            let angles=[30,45,60][rand(0,2)];
+            let val=angles==30?0.5:angles==45?0.707:0.866;
+            q=`Find sin(${angles}°)`;
+            a=val;
+            s=`sin(${angles}) ≈ ${val}`;
+        }
+        if(topic==="simplify"){
+            let x=rand(1,5), y=rand(1,5);
+            q=`Simplify: ${x}x + ${y}x`;
+            a=x+y;
+            s=`${x}x + ${y}x = ${a}x`;
+        }
+        if(topic==="integrals"){
+            let c=rand(1,5);
+            q=`∫ ${c} dx`;
+            a=c+"x + C";
+            s=`∫ ${c} dx = ${a}`;
+        }
+        if(topic==="word"){
+            let p=rand(2,10), q2=rand(2,5);
+            q=`Item $${p}, quantity ${q2}. Total cost?`;
+            a=p*q2;
+            s=`${p} * ${q2} = ${a}`;
+        }
 
-    if(topic==="equation"){
-        let a=rand(1,max), x=rand(1,max), b=rand(1,max);
-        let c=a*x+b;
-
-        question.innerText=`${a}x + ${b} = ${c}`;
-        correctAnswer=x;
-
-        hint.innerText="Chuyển số sang vế phải rồi chia";
-        solution.innerText=`${a}x = ${c-b}\n→ x=${x}`;
+        questions.push(q); answers.push(a); solutions.push(s); topicsUsed.push(tpc);
     }
 
-    if(topic==="function"){
-        let k=rand(1,max), x=rand(1,max);
-
-        question.innerText=`y=${k}x, x=${x}`;
-        correctAnswer=k*x;
-
-        hint.innerText="Thay x vào";
-        solution.innerText=`y=${k}×${x}=${k*x}`;
-
-        drawGraph(k);
-    }
-
-    if(topic==="trig"){
-        let a=[30,45,60][rand(0,2)];
-        let val=a==30?0.5:a==45?0.707:0.866;
-
-        question.innerText=`sin(${a}°)=?`;
-        correctAnswer=val;
-
-        hint.innerText="Nhớ bảng sin";
-        solution.innerText=`≈ ${val}`;
-    }
-
-    if(topic==="word"){
-        let p=rand(10,50), q=rand(2,5);
-
-        question.innerText=`${p}$ × ${q} = ?`;
-        correctAnswer=p*q;
-
-        hint.innerText="Nhân vào";
-        solution.innerText=`${p*q}`;
-    }
-
-    updateStats();
+    renderQuiz();
+    startTimer(45*60);
 }
 
-function check(){
-    let user=document.getElementById("answer").value;
-
-    let correct=Math.abs(user-correctAnswer)<0.01;
-
-    history.push(correct?1:0);
-
-    if(correct){
-        result.innerText="✅ Giỏi lắm!";
-        level++;
-    } else {
-        result.innerText="❌ Thử lại nhé!";
-        hint.style.display="block";
-    }
-
-    localStorage.setItem("level",level);
-    localStorage.setItem("history",JSON.stringify(history));
-
-    updateStats();
-    setTimeout(generate,1500);
+function renderQuiz(){
+    let html="";
+    questions.forEach((q,i)=>{
+        html+=`<div class="question">${i+1}. ${q}<br><input id="ans${i}"></div>`;
+    });
+    document.getElementById("quiz").innerHTML=html;
 }
 
-function updateStats(){
-    let avg=history.reduce((a,b)=>a+b,0)/(history.length||1);
-
-    document.getElementById("level").innerText="Level "+level;
-    document.getElementById("avg").innerText=Math.round(avg*100)+"%";
+let time=0, timerInterval;
+function startTimer(sec){
+    time=sec;
+    clearInterval(timerInterval);
+    timerInterval=setInterval(()=>{
+        let m=Math.floor(time/60), s=time%60;
+        document.getElementById("time").innerText=`${m}:${s<10?'0':''}${s}`;
+        if(time>0) time--;
+        else clearInterval(timerInterval);
+    },1000);
 }
 
-function showHint(){ hint.style.display="block"; }
-function showSolution(){ solution.style.display="block"; }
+function submitTest(){
+    clearInterval(timerInterval);
+    let score=0;
+    let topicErrors={};
 
-function drawGraph(k){
-    let c=document.getElementById("graph");
-    let ctx=c.getContext("2d");
+    questions.forEach((q,i)=>{
+        let user=document.getElementById("ans"+i).value;
+        if(Math.abs(user - answers[i])<0.01) score++;
+        else{
+            topicErrors[topicsUsed[i]] = (topicErrors[topicsUsed[i]]||0)+1;
+        }
+    });
 
-    ctx.clearRect(0,0,c.width,c.height);
+    let reportText=`Score: ${score}/${questions.length}\n`;
 
-    ctx.beginPath();
-
-    for(let x=-10;x<=10;x++){
-        let y=k*x;
-        let px=c.width/2 + x*10;
-        let py=c.height/2 - y*10;
-
-        if(x==-10) ctx.moveTo(px,py);
-        else ctx.lineTo(px,py);
+    if(Object.keys(topicErrors).length>0){
+        reportText+="Topics to improve:\n";
+        for(let t in topicErrors){
+            reportText+=`${t} : ${topicErrors[t]} question(s) wrong\n`;
+        }
     }
 
-    ctx.stroke();
+    document.getElementById("report").style.display="block";
+    document.getElementById("report").innerText=reportText;
+}
+
+function showAllSolutions(){
+    let sol="";
+    solutions.forEach((s,i)=>{
+        sol+=`Q${i+1}: ${s}\n\n`;
+    });
+    document.getElementById("solution").style.display="block";
+    document.getElementById("solution").innerText=sol;
 }
 </script>
 
