@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Math 45-min Test</title>
+<title>NAPLAN-style Math Test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body { font-family: Arial; background:#eef2f7; margin:0; padding:0; }
 .container { max-width:900px; margin:auto; padding:20px; }
 h2 { text-align:center; }
-button { padding:10px 15px; margin:5px; border:none; border-radius:8px; background:#4CAF50; color:white; font-weight:bold; }
+button { padding:10px 15px; margin:5px; border:none; border-radius:8px; background:#4CAF50; color:white; font-weight:bold; cursor:pointer; }
+button.selected { background:#ff9800; }
 input { padding:8px; width:60px; margin-top:5px; }
 .question { margin:15px 0; }
 #solution, #report { white-space: pre-line; background:#f1f1f1; padding:10px; margin-top:10px; display:none; }
@@ -19,162 +20,208 @@ canvas { border:1px solid #ccc; margin-top:10px; width:100%; }
 <body>
 
 <div class="container">
-<h2>📚 Math 45-min Test</h2>
+<h2>📚 NAPLAN-style Math Test</h2>
 
 <p>Select Grade:</p>
-<button onclick="setGrade(9)">Grade 9</button>
-<button onclick="setGrade(10)">Grade 10</button>
-<button onclick="setGrade(11)">Grade 11</button>
+<button onclick="setGrade(9)" id="g9">9</button>
+<button onclick="setGrade(10)" id="g10">10</button>
+<button onclick="setGrade(11)" id="g11">11</button>
+<button onclick="setGrade(12)" id="g12">12</button>
 
 <p>Select Mode:</p>
-<button onclick="setMode('full')">Full Test 45 mins</button>
-<button onclick="setMode('advanced')">Advanced Mode</button>
+<button onclick="setMode('full')" id="modeFull">Full 65-min Test</button>
+<button onclick="setMode('advanced')" id="modeAdv">Advanced Adaptive</button>
 
 <p>Select Topics:</p>
-<button onclick="setTopic('algebra')">Algebra</button>
-<button onclick="setTopic('functions')">Functions</button>
-<button onclick="setTopic('trig')">Trigonometry</button>
-<button onclick="setTopic('simplify')">Simplify Expressions</button>
-<button onclick="setTopic('integrals')">Integrals</button>
-<button onclick="setTopic('word')">Word Problems</button>
+<button onclick="toggleTopic('algebra')" id="tAlgebra">Algebra</button>
+<button onclick="toggleTopic('functions')" id="tFunctions">Functions</button>
+<button onclick="toggleTopic('trig')" id="tTrig">Trigonometry</button>
+<button onclick="toggleTopic('simplify')" id="tSimplify">Simplify</button>
+<button onclick="toggleTopic('integrals')" id="tIntegrals">Integrals</button>
+<button onclick="toggleTopic('word')" id="tWord">Word Problems</button>
 
 <hr>
 
-<div class="timer">Time: <span id="time">45:00</span></div>
+<div class="timer">Time: <span id="time">65:00</span></div>
 
 <div id="quiz"></div>
 
-<button onclick="submitTest()">Submit Test</button>
-<button onclick="showAllSolutions()">Show All Solutions</button>
+<button onclick="submitTest()" id="submitBtn" style="display:none;">Submit Test</button>
+<button onclick="showAllSolutions()" id="showSolBtn" style="display:none;">Show All Solutions</button>
 
 <div id="report"></div>
 <div id="solution"></div>
-
 <canvas id="graph" height="200"></canvas>
 
 </div>
 
 <script>
-let grade, mode, topic;
+let grade, mode;
+let topics = [];
 let questions = [];
 let answers = [];
 let solutions = [];
 let topicsUsed = [];
+let currentQ = 0;
+let time = 65*60, timerInterval;
 
-function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
-
-function setGrade(g){ grade=g; generateTest(); }
-function setMode(m){ mode=m; generateTest(); }
-function setTopic(t){ topic=t; generateTest(); }
-
-function generateTest(){
-    if(!grade || !mode || !topic) return;
-    questions=[]; answers=[]; solutions=[]; topicsUsed=[];
-
-    // 10 questions for example
-    for(let i=0;i<10;i++){
-        let q="", a=0, s="", tpc=topic;
-
-        if(topic==="algebra"){
-            let x=rand(1,10), b=rand(1,10);
-            q=`Solve: x + ${b} = ${x+b}`;
-            a=x;
-            s=`x + ${b} = ${x+b}\n=> x = ${a}`;
-        }
-        if(topic==="functions"){
-            let k=rand(1,5), x=rand(1,5);
-            q=`y=${k}x, x=${x}. Find y`;
-            a=k*x;
-            s=`y=${k}*${x}=${a}`;
-        }
-        if(topic==="trig"){
-            let angles=[30,45,60][rand(0,2)];
-            let val=angles==30?0.5:angles==45?0.707:0.866;
-            q=`Find sin(${angles}°)`;
-            a=val;
-            s=`sin(${angles}) ≈ ${val}`;
-        }
-        if(topic==="simplify"){
-            let x=rand(1,5), y=rand(1,5);
-            q=`Simplify: ${x}x + ${y}x`;
-            a=x+y;
-            s=`${x}x + ${y}x = ${a}x`;
-        }
-        if(topic==="integrals"){
-            let c=rand(1,5);
-            q=`∫ ${c} dx`;
-            a=c+"x + C";
-            s=`∫ ${c} dx = ${a}`;
-        }
-        if(topic==="word"){
-            let p=rand(2,10), q2=rand(2,5);
-            q=`Item $${p}, quantity ${q2}. Total cost?`;
-            a=p*q2;
-            s=`${p} * ${q2} = ${a}`;
-        }
-
-        questions.push(q); answers.push(a); solutions.push(s); topicsUsed.push(tpc);
-    }
-
-    renderQuiz();
-    startTimer(45*60);
+// Highlight selected
+function setGrade(g){
+    grade=g;
+    document.querySelectorAll('button[id^="g"]').forEach(b=>b.classList.remove('selected'));
+    document.getElementById('g'+g).classList.add('selected');
+    tryStartTest();
+}
+function setMode(m){
+    mode=m;
+    document.querySelectorAll('button[id^="mode"]').forEach(b=>b.classList.remove('selected'));
+    document.getElementById('mode'+(m=='full'?'Full':'Adv')).classList.add('selected');
+    tryStartTest();
+}
+function toggleTopic(t){
+    let idx = topics.indexOf(t);
+    if(idx>-1) topics.splice(idx,1);
+    else topics.push(t);
+    document.getElementById('t'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('selected');
+    tryStartTest();
 }
 
-function renderQuiz(){
-    let html="";
-    questions.forEach((q,i)=>{
-        html+=`<div class="question">${i+1}. ${q}<br><input id="ans${i}"></div>`;
-    });
+function tryStartTest(){
+    if(grade && mode && topics.length>0){
+        generateTest();
+        startTimer(time);
+    }
+}
+
+// Utility
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+// Adaptive difficulty levels: 1-easy, 2-medium, 3-hard
+let difficulty = 1;
+
+function generateQuestion(){
+    let t = topics[rand(0,topics.length-1)];
+    let q="", a=0, s="";
+
+    let max = difficulty*10;
+
+    // Mix multiple-choice or short-answer randomly
+    let type = Math.random()<0.5?'MC':'SA';
+
+    if(t==="algebra"){
+        let x=rand(1,max), b=rand(1,max);
+        q=`Solve: x + ${b} = ${x+b}`;
+        a=x;
+        s=`x + ${b} = ${x+b}\n=> x = ${a}`;
+    }
+    if(t==="functions"){
+        let k=rand(1,max), xval=rand(1,max);
+        q=`y=${k}x, x=${xval}. Find y`;
+        a=k*xval;
+        s=`y=${k}*${xval}=${a}`;
+    }
+    if(t==="trig"){
+        let angles=[30,45,60][rand(0,2)];
+        let val=angles==30?0.5:angles==45?0.707:0.866;
+        q=`Find sin(${angles}°)`;
+        a=val;
+        s=`sin(${angles}) ≈ ${val}`;
+    }
+    if(t==="simplify"){
+        let x=rand(1,5), y=rand(1,5);
+        q=`Simplify: ${x}x + ${y}x`;
+        a=x+y;
+        s=`${x}x + ${y}x = ${a}x`;
+    }
+    if(t==="integrals"){
+        let c=rand(1,5);
+        q=`∫ ${c} dx`;
+        a=c+"x + C";
+        s=`∫ ${c} dx = ${a}`;
+    }
+    if(t==="word"){
+        let p=rand(2,10), q2=rand(2,5);
+        q=`Item $${p}, quantity ${q2}. Total cost?`;
+        a=p*q2;
+        s=`${p} * ${q2} = ${a}`;
+    }
+
+    return {q,a,s,t,type};
+}
+
+function generateTest(){
+    questions=[]; answers=[]; solutions=[]; topicsUsed=[]; currentQ=0; difficulty=1;
+    // For 65 mins, NAPLAN ~35-40 questions
+    for(let i=0;i<10;i++){
+        let obj=generateQuestion();
+        questions.push(obj.q);
+        answers.push(obj.a);
+        solutions.push(obj.s);
+        topicsUsed.push(obj.t);
+    }
+    renderQuestion();
+}
+
+// Render current question
+function renderQuestion(){
+    let i=currentQ;
+    let html = `<div class="question">Q${i+1}: ${questions[i]}<br>`;
+    html += `<input id="ansInput"></div>`;
+    html += `<button onclick="checkAnswer()">Submit Answer</button>`;
     document.getElementById("quiz").innerHTML=html;
 }
 
-let time=0, timerInterval;
-function startTimer(sec){
-    time=sec;
-    clearInterval(timerInterval);
-    timerInterval=setInterval(()=>{
-        let m=Math.floor(time/60), s=time%60;
-        document.getElementById("time").innerText=`${m}:${s<10?'0':''}${s}`;
-        if(time>0) time--;
-        else clearInterval(timerInterval);
-    },1000);
+// Check answer
+function checkAnswer(){
+    let user = document.getElementById("ansInput").value;
+    let correct = Math.abs(user - answers[currentQ])<0.01 || user.toLowerCase()==answers[currentQ].toString().toLowerCase();
+    if(correct) difficulty = Math.min(3,difficulty+0.5); else difficulty = Math.max(1,difficulty-0.5);
+    currentQ++;
+    if(currentQ<questions.length) renderQuestion();
+    else finishTest();
 }
 
-function submitTest(){
+function finishTest(){
     clearInterval(timerInterval);
     let score=0;
     let topicErrors={};
-
-    questions.forEach((q,i)=>{
-        let user=document.getElementById("ans"+i).value;
+    for(let i=0;i<questions.length;i++){
+        let user=document.getElementById("ansInput")?.value || "";
         if(Math.abs(user - answers[i])<0.01) score++;
-        else{
-            topicErrors[topicsUsed[i]] = (topicErrors[topicsUsed[i]]||0)+1;
-        }
-    });
-
+        else topicErrors[topicsUsed[i]] = (topicErrors[topicsUsed[i]]||0)+1;
+    }
     let reportText=`Score: ${score}/${questions.length}\n`;
-
     if(Object.keys(topicErrors).length>0){
         reportText+="Topics to improve:\n";
         for(let t in topicErrors){
             reportText+=`${t} : ${topicErrors[t]} question(s) wrong\n`;
         }
     }
-
+    document.getElementById("quiz").innerHTML="";
+    document.getElementById("submitBtn").style.display="block";
+    document.getElementById("showSolBtn").style.display="block";
     document.getElementById("report").style.display="block";
     document.getElementById("report").innerText=reportText;
 }
 
+// Timer
+function startTimer(sec){
+    clearInterval(timerInterval);
+    time=sec;
+    timerInterval=setInterval(()=>{
+        let m=Math.floor(time/60), s=time%60;
+        document.getElementById("time").innerText=`${m}:${s<10?'0':''}${s}`;
+        if(time>0) time--; else clearInterval(timerInterval);
+    },1000);
+}
+
+// Show solutions
 function showAllSolutions(){
     let sol="";
-    solutions.forEach((s,i)=>{
-        sol+=`Q${i+1}: ${s}\n\n`;
-    });
+    solutions.forEach((s,i)=>{ sol+=`Q${i+1}: ${s}\n\n`; });
     document.getElementById("solution").style.display="block";
     document.getElementById("solution").innerText=sol;
 }
 </script>
-
 </body>
 </html>
